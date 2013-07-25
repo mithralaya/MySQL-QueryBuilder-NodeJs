@@ -9,12 +9,7 @@
  * @ConstructorParam        (string) tableName, (array) fields, (object) where, (array) groupBy, (array) orderBy, (int) limit, (int) offset
  * 
  * 
- * 
- * Input format
- * 
- * this._tableName = {string} // the table name you wanted to use for select, input or update
- * 
- * this._fields = ['<fieldName1>', '<fieldName2>'] // the fields you wanted to select from a table or view.
+ * Input format for WHERE
  * 
  * this._where = {  // Objects based where condition. more advanced with both AND and OR statements
  *      "<fieldName>": {
@@ -22,6 +17,14 @@
  *          "condition": {=}, {>=}, {<=}, {IN}, {NOT IN}, {IS}, {IS NOT}
  *      }
  * }
+ * 
+ * Input format for SELECT
+ * 
+ * this._tableName = {string} // the table name you wanted to use for select, input or update
+ * 
+ * this._fields = ['<fieldName1>', '<fieldName2>'] // the fields you wanted to select from a table or view.
+ * 
+ * 
  * 
  * this._groupBy = ['<fieldName1>', '<fieldName2>']
  * 
@@ -31,6 +34,33 @@
  * 
  * this.offset = int
  * 
+ * 
+ * Input Object for INSERT
+ * 
+ * Multiple inserts are alowed 
+ * Objects with identifiers will automatically update records
+ * var object = {
+ *      "0": {
+ *          "<field1>": "<value>",
+ *          "<field2>": "<value>",
+ *          "<field3>": "<value>"
+ *      },
+ *      "1": {
+ *          "<field1>": "<value>",
+ *          "<field2>": "<value>",
+ *          "<field3>": "<value>"
+ *      }
+ * }
+ * 
+ * 
+ * Input Object for UPDATE
+ * 
+ * var object = {
+ *      "<field1">": "<value>",
+ *      "<field2">": "<value>",
+ *      "<field3">": "<value>"
+ * }
+ *   
  */
 
 
