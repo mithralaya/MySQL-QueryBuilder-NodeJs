@@ -46,7 +46,7 @@ Examples
   var selectStatement = query.buildSelect();
 ```
 
-The above variable selectStatement will have a SELECT query like 
+The above variable selectStatement will have a SELECT query like:
 
 ```
 SELECT `firstName`, `lastName`, `timeJoined` FROM UserView
@@ -59,7 +59,7 @@ LIMIT 0, 10
 
 ```
 
-If you think the about method is too long you can do something like this. In my view the below code is lot cleaner and reuable.
+If you think the above method is too long you can do something like:
 
 ```
 var query = new QueryBuilder("UserView"
