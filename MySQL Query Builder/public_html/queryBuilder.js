@@ -64,10 +64,12 @@
  */
 
 
+var Connection = require('./connection').Connection;
 var util = require('util');
+var message = require('../../CoreMessage/message');
 
 //Constructor function
-var QueryBuilder = function(tableName, fields, where, groupBy, orderBy, limit, offset) {
+var QueryBuilder = function(tableName, fields, where, groupBy, orderBy, limit, offset, having) {
     
     //Private variables
     
@@ -76,10 +78,11 @@ var QueryBuilder = function(tableName, fields, where, groupBy, orderBy, limit, o
     this._tableName = tableName;
     this._fields = (util.isArray(fields))? fields: [];
     this._where = where;
+    this._having = having;
     this._orderBy = (util.isArray(orderBy))? orderBy: [];
     this._groupBy = (util.isArray(groupBy))? groupBy: [];
-    this._limit = parseInt(limit);
-    this._offset = parseInt(offset);
+    this._limit = limit;
+    this._offset = offset;
 };
 
 
@@ -96,8 +99,12 @@ QueryBuilder.prototype = {
      * Builds where statement using the given where object.
      * 
      */
-    buildWhere: function() 
+    buildWhere: function(having) 
     {
+        if(having === true)
+        {
+            this._where = this._having;
+        }
         var whereString = '';
         for(var whereKey in this._where){
             if(this._where.hasOwnProperty(whereKey)){
@@ -115,13 +122,42 @@ QueryBuilder.prototype = {
                             if(this._where[whereKey].value[valueKey].value instanceof Array)
                             {                    
                                 //if value is string simply wrap with condition
-                                var isValueNull = ' ("'+this._where[whereKey].value[valueKey].value.join('","')+'")';
-                                whereString += '(`'+valueKey+'` '+this._where[whereKey].value[valueKey].condition+ isValueNull+') OR ';
+                                if(this._where[whereKey].value[valueKey].noQuot === undefined)
+                                {
+                                    var isValueNull = ' ("'+this._where[whereKey].value[valueKey].value.join('","')+'")';
+                                }
+                                else
+                                {
+                                    var isValueNull = ' ('+this._where[whereKey].value[valueKey].value.join('","')+')';
+                                }
+                                if(this._where[whereKey].value[valueKey].noTilt === undefined)
+                                {
+                                    whereString += '(`'+valueKey+'` '+this._where[whereKey].value[valueKey].condition+ isValueNull+') OR ';
+                                }
+                                else
+                                {
+                                    whereString += '('+valueKey+' '+this._where[whereKey].value[valueKey].condition+ isValueNull+') OR ';
+                                }
                             }
                             else
                             {
-                                var isValueNull = (this._where[whereKey].value[valueKey].value == null)? ' NULL' : ' "'+this._where[whereKey].value[valueKey].value+'"';
-                                whereString += '(`'+valueKey+'` '+this._where[whereKey].value[valueKey].condition+ isValueNull + ') OR '
+                                if(this._where[whereKey].value[valueKey].noQuot === undefined)
+                                {
+                                    var isValueNull = (this._where[whereKey].value[valueKey].value == null)? ' NULL' : ' "'+this._where[whereKey].value[valueKey].value+'"';
+                                }
+                                else
+                                {
+                                    var isValueNull = (this._where[whereKey].value[valueKey].value == null)? ' NULL' : ' '+this._where[whereKey].value[valueKey].value+'';
+                                }
+                                
+                                if(this._where[whereKey].value[valueKey].noTilt === undefined)
+                                {
+                                    whereString += '(`'+valueKey+'` '+this._where[whereKey].value[valueKey].condition+ isValueNull + ') OR ';
+                                }
+                                else
+                                {
+                                    whereString += '('+valueKey+' '+this._where[whereKey].value[valueKey].condition+ isValueNull + ') OR ';
+                                }
                             }
                         }
                     }
@@ -131,14 +167,42 @@ QueryBuilder.prototype = {
                 else if(this._where[whereKey].value instanceof Array)
                 {                    
                     //if value is string simply wrap with condition
-                    var isValueNull = ' ("'+this._where[whereKey].value.join('","')+'")';
-                    whereString += '(`'+whereKey+'` '+this._where[whereKey].condition+ isValueNull+')';
+                    if(this._where[whereKey].noQuote === undefined)
+                    {
+                        var isValueNull = ' ("'+this._where[whereKey].value.join('","')+'")';
+                    }
+                    else
+                    {
+                        var isValueNull = ' ('+this._where[whereKey].value.join('","')+')';
+                    }
+                    if(this._where[whereKey].noTilt === undefined)
+                    {
+                        whereString += '(`'+whereKey+'` '+this._where[whereKey].condition+ isValueNull+')';
+                    }
+                    else
+                    {
+                        whereString += '('+whereKey+' '+this._where[whereKey].condition+ isValueNull+')';
+                    }
                 }
                 else
                 {
                     //if value is string simply wrap with condition
-                    var isValueNull = (this._where[whereKey].value == null)? ' NULL' : ' "'+this._where[whereKey].value+'"';
-                    whereString += '(`'+whereKey+'` '+this._where[whereKey].condition+ isValueNull+')';
+                    if(this._where[whereKey].noQuote === undefined)
+                    {
+                        var isValueNull = (this._where[whereKey].value == null)? ' NULL' : ' "'+this._where[whereKey].value+'"';
+                    }
+                    else
+                    {
+                        var isValueNull = (this._where[whereKey].value == null)? ' NULL' : ' '+this._where[whereKey].value+'';
+                    }
+                    if(this._where[whereKey].noTilt === undefined)
+                    {
+                        whereString += '(`'+whereKey+'` '+this._where[whereKey].condition+ isValueNull+')';
+                    }
+                    else
+                    {
+                        whereString += '('+whereKey+' '+this._where[whereKey].condition+ isValueNull+')';
+                    }
                 }
                 whereString += ' AND ';
             }
@@ -188,10 +252,17 @@ QueryBuilder.prototype = {
         {
             this._selectStmt += ' WHERE '+this.buildWhere();
         }
+        
         //check if groupBy is set as an array and its not empty
         if(this._groupBy.length > 0)
         {
             this._selectStmt += ' GROUP BY '+this._groupBy.join(",");
+        }
+        
+        //check if having is set as an object and its not undefined
+        if(this._having !== undefined)
+        {
+            this._selectStmt += ' HAVING '+this.buildWhere(true);
         }
         
         //check if orderBy is set as an array and its not empty
@@ -203,7 +274,7 @@ QueryBuilder.prototype = {
         //check if limit is set
         if(!size && !oneRecord)
         {
-            if(this._limit >= 0)
+            if(this._limit !== undefined)
             {
                 this._selectStmt += ' LIMIT '+this._limit;
                 if(this._offset >= 0)
@@ -227,7 +298,8 @@ QueryBuilder.prototype = {
      * @throws      none
      * @returns     (string) insertStmt
      * @see         check mysql documentation
-     * @todo:       Needs code review and make it simpler. 3 loops and lot of if confditions. 3 loops inside a loop.
+     * @todo:       Needs code review and make it simpler. 3 loops and lot of if confditions. 3 look inside a loop.
+     * @todo:       throw new Error() needs to write and test CoreException class. Error codes has to be created in config.
      * 
      * Builds the Insert or Update mysql statement with the give object and set params.
      * 
@@ -237,9 +309,9 @@ QueryBuilder.prototype = {
         
         if(object === undefined)
         {
-            new Error('input must contain an object');
+            Message.add("error", 'unknownError');
         }
-        
+        console.log(Object.keys(object).length);
         //build insert
         this._insertStmt = 'INSERT INTO `'+ this._tableName+'` (';
         
@@ -259,31 +331,33 @@ QueryBuilder.prototype = {
                 break;
             }
         }
-        
         //slice up the additional characters
         this._insertStmt = this._insertStmt.slice(0, this._insertStmt.length-2);        
         this._insertStmt += ') VALUES '; 
         
+        var tempInsertArray = new Array();
         //create values set
         for(var objectKey in object)
         {
             if(object.hasOwnProperty(objectKey))
             {                
+                var tempInsertStmt = '';
                 //Creating bulk insert option if the object has more than one row
-                this._insertStmt += '('
+                tempInsertStmt += '(';
                 for(var key in object[objectKey])
                 {
                     if(object[objectKey].hasOwnProperty(key))
                     {
-                        this._insertStmt += (object[objectKey][key] == null)? 'NULL, ':  '"'+object[objectKey][key]+'", '; 
+                        tempInsertStmt += (object[objectKey][key] == null)? 'NULL, ':  '"'+object[objectKey][key]+'", '; 
                     }
                 }
-                this._insertStmt = this._insertStmt.slice(0, this._insertStmt.length-2);
-                this._insertStmt += '), ';
+                tempInsertStmt = tempInsertStmt.slice(0, tempInsertStmt.length-2);
+                tempInsertStmt += ')';
+                tempInsertArray.push(tempInsertStmt);
             }
         }
         
-        this._insertStmt = this._insertStmt.slice(0, this._insertStmt.length-2);
+        this._insertStmt += tempInsertArray.join(', ');//this._insertStmt.slice(0, this._insertStmt.length-2);
         
         // Building on duplicate key 
         this._insertStmt += ' ON DUPLICATE KEY UPDATE ';
@@ -291,7 +365,7 @@ QueryBuilder.prototype = {
         for(var objectKey in object)
         {
             if(object.hasOwnProperty(objectKey))
-            {                
+            {
                 for(var key in object[objectKey])
                 {
                     if(object[objectKey].hasOwnProperty(key))
@@ -316,6 +390,7 @@ QueryBuilder.prototype = {
      * @throws      none
      * @returns     (string) updateStmt
      * @see         see mysql documentation 
+     * @todo:       throw new Error() needs to write and test CoreException class. Error codes has to be created in config.
      * 
      * Builds the update statement using the given params.
      * 
@@ -324,7 +399,7 @@ QueryBuilder.prototype = {
     {
         if(object === undefined)
         {
-            new Error('input must contain an object');
+            Message.add("error", 'unknownError');
         }
         this._updateStmt = 'UPDATE `'+this._tableName;
         this._updateStmt += '` SET ';
